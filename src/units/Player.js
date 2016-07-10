@@ -10,10 +10,12 @@ export default class extends Phaser.Sprite {
   constructor ({ game, x, y, asset }) {
     super(game, x, y, asset)
 
+    this.speed = 1
+    this.positionX = 0
+    this.roadPosition = 0
+
     this.game = game
     this.anchor.setTo(0.5)
-
-    this.speed = 1
 
     accelerationKeys.up = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR)
     accelerationKeys.down = game.input.keyboard.addKey(Phaser.Keyboard.Z)
@@ -29,14 +31,15 @@ export default class extends Phaser.Sprite {
     }
 
     this.frame = _.clamp(this.frame, baseFrame - 1, baseFrame + 1)
+    this.positionX = _.clamp(this.positionX, -1, 1)
 
     if (cursors.left.isDown || cursors.right.isDown) {
       if (cursors.left.isDown) {
-        this.x--
+        this.positionX -= .01
         this.frame--
       }
       if (cursors.right.isDown) {
-        this.x++
+        this.positionX += .01
         this.frame++
       }
     } else if (this.frame !== baseFrame) {
@@ -49,7 +52,10 @@ export default class extends Phaser.Sprite {
       this.speed -= .1
     }
 
-    this.speed = _.clamp(this.speed, 0, 20)
+    this.speed = _.clamp(this.speed, 0, 50)
+    this.roadPosition += this.speed
+
+    this.x = game.roadWidth * 2 * this.positionX + game.world.centerX
   }
 
 }
