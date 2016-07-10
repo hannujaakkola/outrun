@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import _ from 'lodash'
 
-const movementKeys = {}
-const gearKeys = {}
+let accelerationKeys = {}
+let cursors
 let baseFrame = 7
 
 export default class extends Phaser.Sprite {
@@ -13,36 +13,43 @@ export default class extends Phaser.Sprite {
     this.game = game
     this.anchor.setTo(0.5)
 
-    this.speed = 0
+    this.speed = 1
 
-    gearKeys.up = game.input.keyboard.addKey(Phaser.Keyboard.W)
-    gearKeys.down = game.input.keyboard.addKey(Phaser.Keyboard.S)
-    movementKeys.left = game.input.keyboard.addKey(Phaser.Keyboard.A)
-    movementKeys.right = game.input.keyboard.addKey(Phaser.Keyboard.D)
+    accelerationKeys.up = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR)
+    accelerationKeys.down = game.input.keyboard.addKey(Phaser.Keyboard.Z)
+    cursors = game.input.keyboard.createCursorKeys()
   }
 
   update () {
-    if (gearKeys.up.isDown) {
+    if (cursors.up.isDown) {
       baseFrame = 2
     }
-    if (gearKeys.down.isDown) {
+    if (cursors.down.isDown) {
       baseFrame = 7
     }
 
     this.frame = _.clamp(this.frame, baseFrame - 1, baseFrame + 1)
 
-    if (movementKeys.left.isDown || movementKeys.right.isDown) {
-      if (movementKeys.left.isDown) {
+    if (cursors.left.isDown || cursors.right.isDown) {
+      if (cursors.left.isDown) {
         this.x--
         this.frame--
       }
-      if (movementKeys.right.isDown) {
+      if (cursors.right.isDown) {
         this.x++
         this.frame++
       }
     } else if (this.frame !== baseFrame) {
       this.frame += this.frame < baseFrame ? 1 : -1
     }
+
+    if (accelerationKeys.up.isDown) {
+      this.speed++
+    } else {
+      this.speed -= .1
+    }
+
+    this.speed = _.clamp(this.speed, 0, 20)
   }
 
 }
