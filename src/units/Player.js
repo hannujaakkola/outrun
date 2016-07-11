@@ -7,7 +7,7 @@ let baseFrame = 7
 
 const maxSpeed = [200, 300]
 
-var centrifugal = 0.3;   // centrifugal force multiplier when going around curves
+var centrifugal = 0.1   // centrifugal force multiplier when going around curves
 
 export default class extends Phaser.Sprite {
 
@@ -29,7 +29,7 @@ export default class extends Phaser.Sprite {
 
   update () {
     let speedPercent = this.speed / maxSpeed[this.gear];
-    let turnRate = speedPercent * 0.02
+    let turnRate = speedPercent * 0.001
 
     if (cursors.up.isDown) {
       baseFrame = 2
@@ -63,7 +63,7 @@ export default class extends Phaser.Sprite {
 
     this.speed = _.clamp(this.speed, 0, maxSpeed[this.gear])
 
-    this.roadPosition += this.speed / 8
+    this.roadPosition += this.speed
 
     this.positionX = this.positionX - (turnRate * speedPercent * game.playerSegment.curve * centrifugal)
     this.x = game.roadWidth * 2 * this.positionX + game.world.centerX
@@ -72,3 +72,4 @@ export default class extends Phaser.Sprite {
   }
 
 }
+

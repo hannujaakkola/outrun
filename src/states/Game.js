@@ -10,7 +10,8 @@ const COLORS = {
 }
 
 var ROAD = {
-  LENGTH: { NONE: 0, SHORT:  25, MEDIUM:  50, LONG:  100 }, // num segments
+  LENGTH: { NONE: 0, SHORT:  25, MEDIUM:  50, LONG:  100 },
+  HILL:   { NONE: 0, LOW:    20, MEDIUM:  40, HIGH:   60 },
   CURVE:  { NONE: 0, EASY:    2, MEDIUM:   4, HARD:    6 }
 }
 
@@ -18,7 +19,7 @@ const segmentLength = 200   // length of a single segment
 const rumbleLength  = 3    // number of segments per red/white rumble strip
 const lanes         = 3    // number of lanes
 const fieldOfView   = 100        // angle (degrees) for field of view
-const cameraHeight  = 100 // z height of camera
+const cameraHeight  = 1000 // z height of camera
 const cameraDepth     = 1 / Math.tan((fieldOfView/2) * Math.PI/180); // z distance camera is from screen (computed)
 const drawDistance  = 300  // number of segments to draw
 const playerZ = (cameraHeight * cameraDepth)
@@ -31,7 +32,7 @@ export default class extends Phaser.State {
   }
 
   create() {
-    game.roadWidth = 100
+    game.roadWidth = 1000
 
     game.stage.backgroundColor = 0x081e2c
 
@@ -51,12 +52,11 @@ export default class extends Phaser.State {
   update() {
     game.graphics.clear()
 
-    game.graphics.beginFill(COLORS.GRASS.bg)
-    game.graphics.drawRect(0, game.height / 2, game.width, game.height / 2)
-
     game.playerSegment = findSegment(this.segments, this.player.roadPosition + playerZ)
     let baseSegment = findSegment(this.segments, this.player.roadPosition)
-    var basePercent = (this.player.positionX % segmentLength) / segmentLength
+    var basePercent = Util.percentRemaining(this.player.roadPosition, segmentLength);
+    game.playerPercent = Util.percentRemaining(this.player.roadPosition+playerZ, segmentLength);
+    game.playerY = interpolate(game.playerSegment.p1.world.y, game.playerSegment.p2.world.y, game.playerPercent)
     var x  = 0;
     var dx = - (baseSegment.curve * basePercent);
     let maxy        = game.height
@@ -64,8 +64,8 @@ export default class extends Phaser.State {
     for(let n = 0; n < drawDistance; n++) {
       let segment = this.segments[(baseSegment.index + n) % this.segments.length];
 
-      project(segment.p1, (this.player.positionX * game.roadWidth) - x, cameraHeight, this.player.roadPosition, cameraDepth, game.width, game.height, game.roadWidth)
-      project(segment.p2, (this.player.positionX * game.roadWidth) - x - dx, cameraHeight, this.player.roadPosition, cameraDepth, game.width, game.height, game.roadWidth)
+      project(segment.p1, (this.player.positionX * game.roadWidth) - x, game.playerY + cameraHeight, this.player.roadPosition, cameraDepth, game.width, game.height, game.roadWidth)
+      project(segment.p2, (this.player.positionX * game.roadWidth) - x - dx, game.playerY + cameraHeight, this.player.roadPosition, cameraDepth, game.width, game.height, game.roadWidth)
 
       x  = x + dx;
       dx = dx + segment.curve;
@@ -91,6 +91,9 @@ export default class extends Phaser.State {
   }
 }
 
+function interpolate(a,b,percent) { return a + (b-a)*percent }
+
+
 
 function renderSegment(game, width, lanes, p1, p2, color) {
 
@@ -99,6 +102,9 @@ function renderSegment(game, width, lanes, p1, p2, color) {
       l1 = Util.laneMarkerWidth(p1.w, lanes),
       l2 = Util.laneMarkerWidth(p2.w, lanes),
       lanew1, lanew2, lanex1, lanex2, lane
+
+  game.graphics.beginFill(COLORS.GRASS.bg)
+  game.graphics.drawRect(0, p2.y, width, p1.y - p2.y)
 
   game.graphics.beginFill(COLORS.GRASS.line)
   game.graphics.drawRect(0, p2.y, width, (p1.y - p2.y) / 10)
@@ -146,6 +152,8 @@ let Util = {
   easeIn:    function(a,b,percent) { return a + (b-a)*Math.pow(percent,2);                           },
   easeOut:   function(a,b,percent) { return a + (b-a)*(1-Math.pow(1-percent,2));                     },
   easeInOut: function(a,b,percent) { return a + (b-a)*((-Math.cos(percent*Math.PI)/2) + 0.5);        },
+  percentRemaining: function(n, total) { return (n%total)/total; },
+  toInt:            function(obj, def)          { if (obj !== null) { var x = parseInt(obj, 10); if (!isNaN(x)) return x; } return Util.toInt(def, 0); },
 }
 
 function project(p, cameraX, cameraY, cameraZ, cameraDepth, width, height, roadWidth) {
@@ -165,11 +173,16 @@ function findSegment(segments, z) {
 function resetRoad(game) {
   game.segments = []
 
+  addLowRollingHills(game);
+  // addHill(ROAD.LENGTH.SHORT, ROAD.HILL.LOW)
   addStraight(game, ROAD.LENGTH.SHORT/4);
   addSCurves(game)
+  addHill(game, ROAD.LENGTH.LONG, ROAD.HILL.HIGH);
   addStraight(game, ROAD.LENGTH.LONG);
   addCurve(game, ROAD.LENGTH.MEDIUM, ROAD.CURVE.MEDIUM);
+  addHill(game, ROAD.LENGTH.LONG, ROAD.HILL.HIGH);
   addCurve(game, ROAD.LENGTH.LONG, ROAD.CURVE.MEDIUM);
+  addHill(game, ROAD.LENGTH.LONG, ROAD.HILL.HIGH);
   addStraight(game)
   addSCurves(game)
   addCurve(game, ROAD.LENGTH.LONG, -ROAD.CURVE.MEDIUM);
@@ -208,23 +221,46 @@ function addSCurves(game) {
   addRoad(game, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM,  -ROAD.CURVE.MEDIUM);
 }
 
-function addSegment(game, curve) {
+function addSegment(game, curve, y) {
   var n = game.segments.length;
   game.segments.push({
      index: n,
-        p1: { world: { z:  n   *segmentLength }, camera: {}, screen: {} },
-        p2: { world: { z: (n+1)*segmentLength }, camera: {}, screen: {} },
+        p1: { world: { y: lastY(game.segments), z:  n   *segmentLength }, camera: {}, screen: {} },
+        p2: { world: { y: y,       z: (n+1)*segmentLength }, camera: {}, screen: {} },
      curve: curve,
      color: Math.floor(n/rumbleLength)%2 ? COLORS.DARK : COLORS.LIGHT
   });
 }
 
-function addRoad(game, enter, hold, leave, curve) {
-  var n;
+function addHill(game, num, height) {
+  num    = num    || ROAD.LENGTH.MEDIUM;
+  height = height || ROAD.HILL.MEDIUM;
+  addRoad(game, num, num, num, 0, height);
+}
+
+function addLowRollingHills(game, num, height) {
+  num    = num    || ROAD.LENGTH.SHORT;
+  height = height || ROAD.HILL.LOW;
+  addRoad(game, num, num, num,  0,  height/2);
+  addRoad(game, num, num, num,  0, -height);
+  addRoad(game, num, num, num,  0,  height);
+  addRoad(game, num, num, num,  0,  0);
+  addRoad(game, num, num, num,  0,  height/2);
+  addRoad(game, num, num, num,  0,  0);
+}
+
+function lastY(segments) {
+  return (segments.length == 0) ? 0 : segments[segments.length-1].p2.world.y;
+}
+
+function addRoad(game, enter, hold, leave, curve, y) {
+  var startY   = lastY(game.segments);
+  var endY     = startY + (Util.toInt(y, 0) * segmentLength);
+  var n, total = enter + hold + leave;
   for(n = 0 ; n < enter ; n++)
-    addSegment(game, Util.easeIn(0, curve, n/enter));
+    addSegment(game, Util.easeIn(0, curve, n/enter), Util.easeInOut(startY, endY, n/total));
   for(n = 0 ; n < hold  ; n++)
-    addSegment(game, curve);
+    addSegment(game, curve, Util.easeInOut(startY, endY, (enter+n)/total));
   for(n = 0 ; n < leave ; n++)
-    addSegment(game, Util.easeInOut(curve, 0, n/leave));
+    addSegment(game, Util.easeInOut(curve, 0, n/leave), Util.easeInOut(startY, endY, (enter+hold+n)/total));
 }
