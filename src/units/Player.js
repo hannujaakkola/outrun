@@ -23,7 +23,7 @@ export default class extends Phaser.Sprite {
     this.anchor.setTo(0.5)
 
     accelerationKeys.up = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR)
-    accelerationKeys.down = game.input.keyboard.addKey(Phaser.Keyboard.Z)
+    accelerationKeys.down = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT)
     cursors = game.input.keyboard.createCursorKeys()
   }
 
@@ -57,6 +57,8 @@ export default class extends Phaser.Sprite {
 
     if (accelerationKeys.up.isDown) {
       this.speed++
+    } else if (accelerationKeys.down.isDown) {
+      this.speed -= 2
     } else {
       this.speed--
     }

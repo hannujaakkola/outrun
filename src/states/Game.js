@@ -22,7 +22,7 @@ const lanes         = 3    // number of lanes
 const fieldOfView   = 100        // angle (degrees) for field of view
 const cameraHeight  = 1000 // z height of camera
 const cameraDepth     = 1 / Math.tan((fieldOfView/2) * Math.PI/180); // z distance camera is from screen (computed)
-const drawDistance  = 300  // number of segments to draw
+const drawDistance  = 500  // number of segments to draw
 const playerZ = (cameraHeight * cameraDepth)
 
 export default class extends Phaser.State {
@@ -86,7 +86,7 @@ export default class extends Phaser.State {
   render() {
     if (__DEV__) {
       game.debug.text(this.player.speed || '--', 2, 14, "#00ff00");
-      // game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");
+      game.debug.text(game.time.fps || '--', 2, 34, "#00ff00");
       // this.game.debug.spriteInfo(this.player, 32, 32)
     }
   }
